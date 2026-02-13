@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>待办智能管家 | SmartFlow</title>
+    
+    <!-- PWA 配置 -->
+    <link rel="icon" type="image/png" href="app-icon.png">
+    <link rel="apple-touch-icon" href="app-icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+
+    <style>
+        :root {
+            /* 适配 iPhone 16 Pro Max 安全区域 */
+            --safe-top: env(safe-area-inset-top, 50px); /* 默认为动岛预留空间 */
+            --safe-bottom: env(safe-area-inset-bottom, 34px); /* 默认为Home Indicator预留 */
+
+            /* Liquid Glass 配色体系 */
+            --bg-base: #000000;
+            --glass-card: rgba(35, 35, 40, 0.65);
+            --glass-input: rgba(0, 0, 0, 0.4);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+            --glass-highlight: rgba(255, 255, 255, 0.05);
+            
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(235, 235, 245, 0.6);
+            
+            /* 霓虹液态渐变 */
+            --accent-color: #0A84FF;
+            --accent-cyan: #00F0FF;
+            --liquid-gradient: linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%);
+            --danger-color: #FF453A;
+            --success-color: #32D74B;
+            --warning-color: #FFD60A;
+            
+            --border-radius: 28px; /* 更圆润的边角，适配新iPhone屏幕 */
+            --header-height: 60px;
+            --nav-height: 90px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            /* 深邃背景，模拟液态光感 */
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(10, 132, 255, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(94, 92, 230, 0.15) 0%, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding-top: calc(var(--header-height) + var(--safe-top));
+            padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
+        }
+
+        /* --- 顶部玻璃导航栏 --- */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: calc(var(--header-height) + var(--safe-top));
+            padding-top: var(--safe-top);
+            background: rgba(20, 20, 25, 0.6); /* 更加通透 */
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 24px;
+            padding-right: 24px;
+            z-index: 1000;
+            border-bottom: 0.5px solid rgba(255,255,255,0.08);
+        }
+
+        .app-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            /* 液态流光文字 */
+            background: linear-gradient(90deg, #fff, var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+
+        /* --- 底部悬浮玻璃导航 (Floating Dock Style) --- */
+        nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: calc(var(--nav-height) + var(--safe-bottom));
+            padding-bottom: var(--safe-bottom);
+            background: rgba(20, 20, 25, 0.6);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 0.5px solid rgba(255,255,255,0.08);
+            z-index: 1000;
+        }
+
+        nav button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            width: 60px;
+            opacity: 0.7;
+        }
+
+        nav button .icon {
+            font-size: 1.5rem;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 0 0 transparent);
+        }
+
+        nav button.active {
+            color: var(--accent-cyan);
+            opacity: 1;
+        }
+
+        nav button.active .icon {
+            transform: translateY(-5px) scale(1.1);
+            filter: drop-shadow(0 0 8px rgba(0, 240, 255, 0.6));
+        }
+
+        /* --- 主内容区 --- */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 24px;
+            width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .view-section {
+            display: none;
+            animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* --- Liquid Glass Cards --- */
+        .card {
+            background: var(--glass-card);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: var(--glass-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 玻璃反光效果 */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .required::after { content: " *"; color: var(--danger-color); }
+
+        /* --- Glass Inputs --- */
+        input, select, textarea, .datetime-trigger, .modal-select-wrapper select, .filter-item select {
+            width: 100%;
+            padding: 16px 18px;
+            margin-bottom: 24px;
+            background-color: var(--glass-input) !important;
+            border: 1px solid rgba(255,255,255,0.05) !important;
+            border-radius: 16px !important;
+            color: white !important;
+            font-size: 17px !important; /* iOS最佳阅读字号 */
+            appearance: none;
+            -webkit-appearance: none;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-cyan) !important;
+            box-shadow: 0 0 0 4px rgba(0, 240, 255, 0.15), inset 0 2px 4px rgba(0,0,0,0.2);
+            background-color: rgba(0,0,0,0.6) !important;
+        }
+
+        /* 统一 Select 箭头 */
+        .select-wrapper, .modal-select-wrapper {
+            position: relative;
+        }
+        .select-wrapper::after, .modal-select-wrapper::after {
+            content: '▼';
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            position: absolute;
+            right: 18px;
+            top: 50%; /* Center relative to container */
+            transform: translateY(-80%); /* Fine tune */
+            pointer-events: none;
+        }
+        
+        /* Modal Select Specifics */
+        .modal-select-wrapper {
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .modal-select-wrapper select {
+            margin-bottom: 0;
+            text-align-last: center;
+        }
+        .modal-select-wrapper::after {
+            transform: translateY(-50%); /* Center perfectly for modal */
+        }
+
+        /* --- Liquid Buttons --- */
+        .btn {
+            background: var(--liquid-gradient);
+            color: #fff;
+            border: none;
+            padding: 18px;
+            border-radius: 18px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.05rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(10, 132, 255, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent);
+            pointer-events: none;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 5px 15px rgba(10, 132, 255, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff5e62, #ff9966);
+            box-shadow: 0 10px 25px rgba(255, 69, 58, 0.3);
+        }
+
+        .btn-small {
+            width: auto;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            margin: 0;
+            background: rgba(255,255,255,0.1);
+            color: var(--accent-cyan);
+            box-shadow: none;
+            backdrop-filter: blur(10px);
+        }
+
+        /* --- 列表视图优化 --- */
+        .task-section-title {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin: 28px 0 12px 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            opacity: 0.8;
+        }
+
+        .task-item {
+            background: var(--glass-card);
+            padding: 20px;
+            border-radius: 20px; /* Slightly smaller than cards */
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .task-item:active {
+            transform: scale(0.98);
+            background: rgba(45, 45, 50, 0.7);
+        }
+
+        /* Priority Indicators (Dots) */
+        .task-item::before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            box-shadow: 0 0 8px currentColor;
+        }
+        .task-item.priority-高::before { background-color: var(--danger-color); color: var(--danger-color); }
+        .task-item.priority-中::before { background-color: var(--warning-color); color: var(--warning-color); }
+        .task-item.priority-低::before { background-color: var(--success-color); color: var(--success-color); }
+
+        .task-info { padding-left: 15px; }
+
+        .task-info h4 {
+            font-size: 1.15rem;
+            margin-bottom: 8px;
+            line-height: 1.4;
+            color: rgba(255,255,255,0.95);
+        }
+
+        .task-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .task-tag {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-shadow: none; /* Tags usually have dark text */
+        }
+
+        /* --- Filter Styles --- */
+        .filter-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 0 4px;
+        }
+        .filter-item {
+            flex: 1;
+            background-color: var(--glass-card);
+            border-radius: 14px;
+            border: var(--glass-border);
+            height: 44px;
+            position: relative;
+            backdrop-filter: blur(20px);
+        }
+        .filter-item select {
+            height: 100%;
+            margin-bottom: 0;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 12px;
+            font-size: 0.9rem !important;
+        }
+        /* Ensure dropdown visibility on Windows */
+        .filter-item select option { background-color: #2C2C2E; color: white; }
+
+        /* --- Custom Time Picker Trigger --- */
+        .datetime-trigger {
+            margin-bottom: 24px; /* Match input margin */
+            border-radius: 16px;
+            background-color: var(--glass-input);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* --- 弹窗 (Glass Sheets) --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            align-items: flex-end;
+        }
+        
+        .modal.active { display: flex; animation: fadeInBg 0.3s ease; }
+
+        .modal-content {
+            background: rgba(30, 30, 35, 0.8);
+            width: 100%;
+            border-radius: 36px 36px 0 0;
+            padding: 36px 24px calc(30px + var(--safe-bottom)) 24px;
+            max-height: 92vh;
+            overflow-y: auto;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 -10px 60px rgba(0,0,0,0.5);
+            backdrop-filter: blur(50px) saturate(180%);
+            -webkit-backdrop-filter: blur(50px) saturate(180%);
+            animation: slideUp 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes fadeInBg { from { background: rgba(0,0,0,0); } to { background: rgba(0,0,0,0.4); } }
+
+        /* Handle bar */
+        .modal-content::before {
+            content: ''; display: block;
+            width: 48px; height: 5px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            margin: -15px auto 25px auto;
+        }
+
+        /* Grid Layouts inside forms */
+        .form-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        }
+
+        /* 设置页 Tag */
+        .tag {
+            background-color: rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            backdrop-filter: blur(10px);
+        }
+
+        /* 居中弹窗 (Floating Glass) */
+        .modal-center {
+            align-items: center !important; justify-content: center !important;
+        }
+        .modal-center .modal-content {
+            max-width: 340px;
+            width: 90%;
+            border-radius: 32px;
+            text-align: center;
+            padding: 40px 30px;
+            border: 1px solid rgba(255,255,255,0.15);
+            animation: zoomIn 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        .modal-center .modal-content::before { display: none; }
+
+        /* Detail Modal Specifics */
+        .modal-detail .modal-content {
+            text-align: left;
+            padding: 32px 28px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-detail h3 {
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .modal-detail #detailContainer {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 4px; /* prevent layout shift */
+            margin-bottom: 10px;
+        }
+        /* Thin scrollbar */
+        .modal-detail #detailContainer::-webkit-scrollbar { width: 4px; }
+        .modal-detail #detailContainer::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+        /* Complete Modal Specifics - Ensure left alignment inside centered modal */
+        #completeModal .modal-content {
+            text-align: left;
+        }
+        #completeModal h3, #completeModal #modalTaskTitle {
+            text-align: center;
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* Custom Picker Specifics */
+        .picker-section { margin-bottom: 24px; }
+        
+        /* Dashboard Charts */
+        .chart-container { height: 250px; padding-top: 30px; }
+        .bar { width: 24px; border-radius: 6px 6px 0 0; background: var(--accent-cyan); box-shadow: 0 0 10px rgba(0,240,255,0.3); }
+        .bar-label { margin-top: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.6); }
+        .bar-value { top: -24px; font-size: 0.8rem; font-weight: bold; text-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        
+        .stat-card .stat-number {
+            text-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+
+<!-- 顶部 Header -->
+<header>
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#icon-gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <defs>
+                <linearGradient id="icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#fff" />
+                    <stop offset="100%" stop-color="#00F0FF" />
+                </linearGradient>
+            </defs>
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <circle cx="12" cy="5" r="2" />
+            <path d="M12 7v4" />
+            <line x1="8" y1="16" x2="8" y2="16" />
+            <line x1="16" y1="16" x2="16" y2="16" />
+        </svg>
+        <div class="app-title">待办智能管家</div>
+    </div>
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <button onclick="openSyncSettings()" style="background:none; border:none; font-size: 1.5rem; color: var(--accent-cyan); cursor: pointer;">
+            ☁️
+        </button>
+    </div>
+</header>
+
+<main>
+    <!-- 界面一：设置 -->
+    <section id="settings" class="view-section">
+        <h3 class="task-section-title">分类管理</h3>
+        <div class="card">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="newCategory" placeholder="输入新分类" style="margin-bottom:0">
+                <button class="btn btn-small" onclick="addConfig('categories', 'newCategory')">添加</button>
+            </div>
+            <div id="categoryList" class="tag-list" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+        </div>
+
+        <h3 class="task-section-title">紧急程度</h3>
+        <div class="card">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="newPriority" placeholder="输入新等级" style="margin-bottom:0">
+                <button class="btn btn-small" onclick="addConfig('priorities', 'newPriority')">添加</button>
+            </div>
+            <div id="priorityList" class="tag-list" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+        </div>
+    </section>
+
+    <!-- 界面二：创建 (Entry) -->
+    <section id="entry" class="view-section active">
+        <form id="taskForm" onsubmit="submitTask(event)">
+            <div class="card">
+                <label class="required">待办内容</label>
+                <input type="text" id="taskDesc" required placeholder="准备做点什么？">
+
+                <div class="form-grid">
+                    <div>
+                        <label class="required">分类</label>
+                        <div class="select-wrapper">
+                            <select id="taskCategory" required></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="required">紧急度</label>
+                        <div class="select-wrapper">
+                            <select id="taskPriority" required></select>
+                        </div>
+                    </div>
+                </div>
+
+                <label class="required">截止时间</label>
+                <div class="datetime-trigger" onclick="openDateTimePicker('task')">
+                    <span id="display_task">请选择时间</span>
+                    <span style="color:var(--text-secondary)">▼</span>
+                </div>
+                <input type="hidden" id="taskDate">
+                <input type="hidden" id="taskHour">
+                <input type="hidden" id="taskMinute">
+            </div>
+
+            <div class="card">
+                <div class="form-grid">
+                    <div>
+                        <label>相关人</label>
+                        <input type="text" id="taskRelated" placeholder="选填">
+                    </div>
+                    <div>
+                        <label>需求方</label>
+                        <input type="text" id="taskRequester" placeholder="选填">
+                    </div>
+                </div>
+
+                <label>相关链接</label>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <input type="url" id="taskFileLink" placeholder="https://" style="margin-bottom:0">
+                    <button type="button" class="btn btn-small" onclick="addLink('taskFileLink', 'fileListDisplay')">+</button>
+                </div>
+                <div id="fileListDisplay" class="link-list"></div>
+            </div>
+
+            <button type="submit" class="btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+                </svg>
+                创建待办
+            </button>
+        </form>
+    </section>
+
+    <!-- 界面三：清单 (List) -->
+    <section id="list" class="view-section">
+        <div class="filter-container">
+            <div class="select-wrapper filter-item">
+                <select id="filterDeadline" onchange="renderList()">
+                    <option value="all">📅 时间: 不指定</option>
+                    <option value="today">今日</option>
+                    <option value="three_days">三天内</option>
+                    <option value="this_week">本周</option>
+                    <option value="this_month">本月</option>
+                    <option value="long_term">长期 (>3个月)</option>
+                </select>
+            </div>
+            <div class="select-wrapper filter-item">
+                <select id="filterPriority" onchange="renderList()">
+                    <option value="all">🚨 紧急: 不指定</option>
+                    <option value="高">高</option>
+                    <option value="中">中</option>
+                    <option value="低">低</option>
+                </select>
+            </div>
+        </div>
+        <div id="listContainer" style="padding-bottom: 20px;">
+            <!-- 动态生成 -->
+        </div>
+    </section>
+
+    <!-- 界面四：关闭 (Complete) -->
+    <section id="complete" class="view-section">
+        <div class="filter-container">
+            <div class="select-wrapper filter-item">
+                <select id="filterDeadlineComplete" onchange="renderCompleteList()">
+                    <option value="all">📅 时间: 不指定</option>
+                    <option value="today">今日</option>
+                    <option value="three_days">三天内</option>
+                    <option value="this_week">本周</option>
+                    <option value="this_month">本月</option>
+                    <option value="long_term">长期 (>3个月)</option>
+                </select>
+            </div>
+            <div class="select-wrapper filter-item">
+                <select id="filterPriorityComplete" onchange="renderCompleteList()">
+                    <option value="all">🚨 紧急: 不指定</option>
+                    <option value="高">高</option>
+                    <option value="中">中</option>
+                    <option value="低">低</option>
+                </select>
+            </div>
+        </div>
+        <div class="card">
+            <p style="color: var(--text-secondary); text-align: center; margin-bottom: 0;">点击下方待办以标记完成</p>
+        </div>
+        <div id="pendingListContainer"></div>
+    </section>
+
+    <!-- 界面五：看板 (Dashboard) -->
+    <section id="dashboard" class="view-section">
+        <div class="dashboard-grid">
+            <div class="card stat-card">
+                <div>
+                    <div style="color:var(--text-secondary); font-size:0.9rem">总计</div>
+                    <div class="stat-number" id="statTotal">0</div>
+                </div>
+                <div style="font-size:2rem">📝</div>
+            </div>
+            <div class="card stat-card">
+                <div>
+                    <div style="color:var(--text-secondary); font-size:0.9rem">已完成</div>
+                    <div class="stat-number" id="statCompleted" style="color: var(--success-color)">0</div>
+                </div>
+                <div style="font-size:2rem">✅</div>
+            </div>
+            <div class="card stat-card">
+                <div>
+                    <div style="color:var(--text-secondary); font-size:0.9rem">进行中</div>
+                    <div class="stat-number" id="statPending" style="color: var(--danger-color)">0</div>
+                </div>
+                <div style="font-size:2rem">🔥</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>⏳ 截止分布</h3>
+            <div id="chartDeadline" class="chart-container"></div>
+        </div>
+
+        <div class="card">
+            <h3>🏷️ 分类统计</h3>
+            <div id="chartCategory" class="chart-container"></div>
+        </div>
+        
+        <div class="card">
+            <h3>🚨 紧急度</h3>
+            <div id="chartPriority" class="chart-container"></div>
+        </div>
+    </section>
+</main>
+
+<!-- 底部导航 -->
+<nav>
+    <button onclick="switchView('entry')" class="active">
+        <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+        </span>
+        <span>创建</span>
+    </button>
+    <button onclick="switchView('list')">
+        <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+        </span>
+        <span>清单</span>
+    </button>
+    <button onclick="switchView('complete')">
+        <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+        </span>
+        <span>关闭</span>
+    </button>
+    <button onclick="switchView('dashboard')">
+        <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+        </span>
+        <span>看板</span>
+    </button>
+    <button onclick="switchView('settings')">
+        <span class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </span>
+        <span>设置</span>
+    </button>
+</nav>
+
+<!-- 弹窗部分 (保持逻辑一致，样式已改为 Bottom Sheet) -->
+<!-- 编辑任务弹窗 -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom:20px;">编辑待办</h3>
+        <form onsubmit="saveEditedTask(event)">
+            <input type="hidden" id="editTaskId">
+            
+            <label class="required">待办内容</label>
+            <input type="text" id="editTaskDesc" required>
+
+            <div class="form-grid">
+                <div>
+                    <label class="required">分类</label>
+                    <div class="select-wrapper">
+                        <select id="editTaskCategory" required></select>
+                    </div>
+                </div>
+                <div>
+                    <label class="required">紧急度</label>
+                    <div class="select-wrapper">
+                        <select id="editTaskPriority" required></select>
+                    </div>
+                </div>
+            </div>
+
+            <label class="required">截止日期</label>
+            <div class="datetime-trigger" onclick="openDateTimePicker('editTask')">
+                <span id="display_editTask">请选择时间</span>
+                <span style="color:var(--text-secondary)">▼</span>
+            </div>
+            <input type="hidden" id="editTaskDate">
+            <input type="hidden" id="editTaskHour">
+            <input type="hidden" id="editTaskMinute">
+
+            <div class="form-grid">
+                <div>
+                    <label>相关人</label>
+                    <input type="text" id="editTaskRelated">
+                </div>
+                <div>
+                    <label>需求方</label>
+                    <input type="text" id="editTaskRequester">
+                </div>
+            </div>
+
+            <label>相关链接</label>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <input type="url" id="editTaskFileLink" placeholder="https://" style="margin-bottom:0">
+                <button type="button" class="btn btn-small" onclick="addLink('editTaskFileLink', 'editFileListDisplay')">+</button>
+            </div>
+            <div id="editFileListDisplay" class="link-list"></div>
+
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button type="submit" class="btn" style="flex: 2;">保存</button>
+                <button type="button" class="btn btn-danger" style="flex: 1; background: #3A3A3C; color: #fff; box-shadow:none;" onclick="closeEditModal()">取消</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 关闭确认弹窗 -->
+<div id="completeModal" class="modal modal-center">
+    <div class="modal-content">
+        <h3 style="margin-bottom:10px;">确认完成</h3>
+        <p id="modalTaskTitle" style="margin-bottom: 20px; color: var(--text-secondary); font-size: 0.9rem;"></p>
+        <form onsubmit="confirmComplete(event)">
+            <input type="hidden" id="completeTaskId">
+            
+            <label class="required">实际完成时间</label>
+            <div class="datetime-trigger" onclick="openDateTimePicker('complete')">
+                <span id="display_complete">请选择时间</span>
+                <span style="color:var(--text-secondary)">▼</span>
+            </div>
+            <input type="hidden" id="completeDate">
+            <input type="hidden" id="completeHour">
+            <input type="hidden" id="completeMinute">
+
+            <label class="required">状态</label>
+            <div class="select-wrapper">
+                <select id="completeStatus" required>
+                    <option value="completed">✅ 完成</option>
+                    <option value="abandoned">❌ 放弃</option>
+                </select>
+            </div>
+
+            <label>待办结论</label>
+            <textarea id="completeConclusion" rows="3" placeholder="可选填感想或结论..." style="width:100%; padding:14px 16px; margin-bottom:20px; background-color:var(--input-bg); border:none; border-radius:10px; color:white; font-size:16px; font-family:inherit; resize:vertical;"></textarea>
+
+            <label>交付链接</label>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <input type="url" id="deliverableLink" placeholder="https://" style="margin-bottom:0">
+                <button type="button" class="btn btn-small" onclick="addLink('deliverableLink', 'deliverableListDisplay')">+</button>
+            </div>
+            <div id="deliverableListDisplay" class="link-list"></div>
+
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button type="submit" class="btn" style="flex: 2;">提交归档</button>
+                <button type="button" class="btn btn-danger" style="flex: 1; background: #3A3A3C; color: #fff; box-shadow:none;" onclick="closeModal()">取消</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 详情弹窗 (Task Details) -->
+<div id="taskDetailModal" class="modal modal-center modal-detail" style="z-index: 2000;">
+    <div class="modal-content">
+        <h3 style="margin-bottom:20px;">待办详情</h3>
+        
+        <div id="detailContainer">
+            <!-- 动态生成 -->
+        </div>
+
+        <button class="btn" style="margin-top:10px;" onclick="closeTaskDetailModal()">关闭</button>
+    </div>
+</div>
+
+<!-- 成功弹窗 (全屏或中间浮层优化) -->
+<div id="successModal" class="modal modal-center">
+    <div class="modal-content">
+        <div style="font-size: 4rem; margin-bottom: 10px;">🎉</div>
+        <h3 style="margin-bottom: 10px;">创建成功</h3>
+        <button class="btn" onclick="closeSuccessModal()" style="margin-top:20px;">好的</button>
+    </div>
+</div>
+
+<div id="editSuccessModal" class="modal modal-center">
+    <div class="modal-content">
+        <div style="font-size: 4rem; margin-bottom: 10px;">✍️</div>
+        <h3 style="margin-bottom: 10px;">修改保存成功</h3>
+        <button class="btn" onclick="closeEditSuccessModal()" style="margin-top:20px;">好的</button>
+    </div>
+</div>
+
+<div id="completeSuccessModal" class="modal modal-center">
+    <div class="modal-content">
+        <div style="font-size: 4rem; margin-bottom: 10px;">🔒</div>
+        <h3 style="margin-bottom: 10px;">已归档</h3>
+        <button class="btn" onclick="closeCompleteSuccessModal()" style="margin-top:20px;">好的</button>
+    </div>
+</div>
+
+<!-- 云同步设置弹窗 (Bottom Sheet) -->
+<div id="syncModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom: 15px;">☁️ 云端同步</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5;">
+            请输入 JSONBin 信息以多端同步。
+        </p>
+        <form onsubmit="saveSyncConfig(event)">
+            <label class="required">Bin ID</label>
+            <input type="text" id="syncBinId" value="698c5a34ae596e708f224101" required style="font-family: monospace;">
+            
+            <label class="required">Master Key</label>
+            <input type="password" id="syncApiKey" value="$2a$10$Ie1qeDa4y4TsH8SbTgdZdeFxgfERhZexrUBzq9ETjSugsN5d15Shy" required style="font-family: monospace;">
+
+            <div id="syncStatus" style="margin-bottom: 15px; font-size: 0.9rem;"></div>
+
+            <div style="display: flex; gap: 15px;">
+                <button type="submit" class="btn" style="flex: 2;">🔗 连接并同步</button>
+                <button type="button" class="btn btn-danger" style="flex: 1; background: #3A3A3C; color: #fff; box-shadow:none;" onclick="closeSyncModal()">关闭</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cloud Action Modal -->
+<div id="cloudActionModal" class="modal modal-center">
+    <div class="modal-content">
+        <h3 style="margin-bottom: 20px;">☁️ 数据同步</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 20px;">请选择同步操作</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <button class="btn" onclick="handleCloudAction('upload')">⬆️ 上传 (本地 → 云端)</button>
+            <button class="btn" onclick="handleCloudAction('download')" style="background: linear-gradient(135deg, #32D74B, #00C0CC);">⬇️ 下载 (云端 → 本地)</button>
+        </div>
+
+        <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+             <button class="btn btn-small" style="width: 100%; background: none; border: 1px solid #444;" onclick="switchToSettings()">⚙️ 修改配置</button>
+             <button class="btn btn-small" style="width: 100%; margin-top: 10px; background: none; color: #666;" onclick="closeCloudActionModal()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- DateTime Picker Modal -->
+<div id="dateTimePickerModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-bottom: 20px;">选择时间</h3>
+        
+        <div class="picker-section">
+            <label class="picker-label">日期</label>
+            <input type="date" id="pickerDate" style="width:100%; padding:14px; background:#2C2C2E; border-radius:12px; border:none; color:white; font-size:1.1rem; font-family:inherit;">
+        </div>
+        
+        <div class="picker-section">
+            <label class="picker-label">时间</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div class="modal-select-wrapper" style="flex:1;">
+                    <select id="pickerHourSelect"></select>
+                </div>
+                <span style="font-weight:bold; font-size:1.2rem;">:</span>
+                <div class="modal-select-wrapper" style="flex:1;">
+                    <select id="pickerMinuteSelect"></select>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn" onclick="confirmDateTime()">确定</button>
+        <button class="btn btn-small" style="width: 100%; margin-top: 10px; background: none; color: #666;" onclick="closeDateTimePicker()">取消</button>
+    </div>
+</div>
+
+<!-- Generic Confirm Modal -->
+<div id="confirmModal" class="modal modal-center" style="z-index: 3000;">
+    <div class="modal-content">
+        <div style="font-size: 3rem; margin-bottom: 15px;">⚠️</div>
+        <h3 style="margin-bottom: 15px;">需要确认</h3>
+        <p id="confirmMessage" style="color: var(--text-secondary); margin-bottom: 25px; line-height: 1.6; font-size: 1rem; white-space: pre-wrap;"></p>
+        <div style="display: flex; gap: 15px;">
+            <button id="confirmBtn" class="btn" style="flex: 1;">确定</button>
+            <button id="confirmCancelBtn" class="btn btn-small" style="flex: 1; background: rgba(255,255,255,0.1); color: #fff;">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Alert Modal -->
+<div id="alertModal" class="modal modal-center" style="z-index: 3001;">
+    <div class="modal-content">
+        <div style="font-size: 3rem; margin-bottom: 15px;">ℹ️</div>
+        <h3 style="margin-bottom: 15px;">提示</h3>
+        <p id="alertMessage" style="color: var(--text-secondary); margin-bottom: 25px; line-height: 1.6; font-size: 1rem; white-space: pre-wrap;"></p>
+        <button class="btn" onclick="document.getElementById('alertModal').classList.remove('active')">知道了</button>
+    </div>
+</div>
+
+<script>
+    // --- Custom Dialogs ---
+    window.showConfirm = function(message, confirmText = '确定', cancelText = '取消') {
+        return new Promise((resolve) => {
+            document.getElementById('confirmMessage').innerText = message;
+            const modal = document.getElementById('confirmModal');
+            const confirmBtn = document.getElementById('confirmBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+            
+            confirmBtn.innerText = confirmText;
+            cancelBtn.innerText = cancelText;
+            
+            // Clone to remove old listeners
+            const newConfirm = confirmBtn.cloneNode(true);
+            const newCancel = cancelBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+            
+            newConfirm.onclick = () => {
+                document.getElementById('confirmModal').classList.remove('active');
+                resolve(true);
+            };
+            
+            newCancel.onclick = () => {
+                document.getElementById('confirmModal').classList.remove('active');
+                resolve(false);
+            };
+            
+            modal.classList.add('active');
+        });
+    }
+
+    window.showAlert = function(message) {
+        document.getElementById('alertMessage').innerText = message;
+        document.getElementById('alertModal').classList.add('active');
+    }
+
+    // --- 数据管理 ---
+    const defaultData = {
+        config: {
+            categories: ["工作", "生活", "健身", "团队"],
+            priorities: ["高", "中", "低"]
+        },
+        tasks: []
+    };
+
+    let appData = JSON.parse(localStorage.getItem('smartFlowData')) || defaultData;
+    let tempLinks = [];
+
+    // --- Custom Date Time Picker Logic ---
+    let currentPickerPrefix = '';
+    
+    function initDateTimePicker() {
+        const hourSelect = document.getElementById('pickerHourSelect');
+        let hHtml = '';
+        for(let i=0; i<24; i++) {
+            const val = String(i).padStart(2, '0');
+            hHtml += `<option value="${val}">${val}</option>`;
+        }
+        hourSelect.innerHTML = hHtml;
+
+        const minuteSelect = document.getElementById('pickerMinuteSelect');
+        let mHtml = '';
+        ['00', '10', '20', '30', '40', '50'].forEach(m => {
+            mHtml += `<option value="${m}">${m}</option>`;
+        });
+        minuteSelect.innerHTML = mHtml;
+    }
+
+    window.openDateTimePicker = function(prefix) {
+        currentPickerPrefix = prefix;
+        
+        // Read current values from hidden inputs
+        let d = document.getElementById(prefix + 'Date').value;
+        let h = document.getElementById(prefix + 'Hour').value;
+        let m = document.getElementById(prefix + 'Minute').value;
+
+        // Default logic
+        if (!d) {
+            const now = new Date();
+            const tzOffset = now.getTimezoneOffset() * 60000;
+            const localIso = new Date(now - tzOffset).toISOString();
+            d = localIso.slice(0, 10);
+            h = localIso.slice(11, 13);
+            m = String(Math.ceil(now.getMinutes() / 10) * 10).padStart(2, '0');
+            if(m === '60') m = '50';
+        }
+
+        // Set UI values
+        document.getElementById('pickerDate').value = d;
+        document.getElementById('pickerHourSelect').value = h || '12';
+        document.getElementById('pickerMinuteSelect').value = m || '00';
+
+        document.getElementById('dateTimePickerModal').classList.add('active');
+    }
+
+    window.closeDateTimePicker = function() {
+        document.getElementById('dateTimePickerModal').classList.remove('active');
+    }
+
+    window.confirmDateTime = function() {
+        if (!currentPickerPrefix) return;
+        
+        const dateVal = document.getElementById('pickerDate').value;
+        const hourVal = document.getElementById('pickerHourSelect').value;
+        const minuteVal = document.getElementById('pickerMinuteSelect').value;
+
+        if (!dateVal) { showAlert('请选择日期'); return; }
+        
+        // Write to hidden inputs
+        document.getElementById(currentPickerPrefix + 'Date').value = dateVal;
+        document.getElementById(currentPickerPrefix + 'Hour').value = hourVal;
+        document.getElementById(currentPickerPrefix + 'Minute').value = minuteVal;
+
+        // Update Display Text
+        const displayEl = document.getElementById('display_' + currentPickerPrefix);
+        if(displayEl) {
+            displayEl.innerText = `${dateVal} ${hourVal}:${minuteVal}`;
+            displayEl.style.color = 'white'; 
+        }
+
+        closeDateTimePicker();
+    }
+
+    function setDateTimeInputs(isoString, dateId, hourId, minuteId) {
+        if (!isoString) return;
+        const d = new Date(isoString);
+        const tzOffset = d.getTimezoneOffset() * 60000;
+        const localDate = new Date(d.getTime() - tzOffset);
+        
+        const localIso = localDate.toISOString();
+        const ymd = localIso.slice(0, 10);
+        const hh = localIso.slice(11, 13);
+        const mm = localIso.slice(14, 16);
+        
+        let minNum = parseInt(mm);
+        minNum = Math.ceil(minNum / 10) * 10;
+        if (minNum >= 60) minNum = 50; 
+        
+        document.getElementById(dateId).value = ymd;
+        document.getElementById(hourId).value = hh;
+        document.getElementById(minuteId).value = String(minNum).padStart(2, '0');
+        
+        // Update display if needed (e.g. init)
+        const prefix = dateId.replace('Date', '');
+        const displayEl = document.getElementById('display_' + prefix);
+        if(displayEl) {
+             displayEl.innerText = `${ymd} ${hh}:${String(minNum).padStart(2,'0')}`;
+        }
+    }
+
+    function getDateTimeFromInputs(dateId, hourId, minuteId) {
+        const dateVal = document.getElementById(dateId).value;
+        const hourVal = document.getElementById(hourId).value;
+        const minuteVal = document.getElementById(minuteId).value;
+        
+        if (!dateVal || !hourVal || !minuteVal) return null;
+        
+        return new Date(`${dateVal}T${hourVal}:${minuteVal}:00`).toISOString();
+    }
+
+    // --- 云同步逻辑 ---
+    let cloudConfig = JSON.parse(localStorage.getItem('smartFlowCloudConfig')) || null;
+
+    // 自动修正：如果检测到旧的特定 Bin ID，自动更新为新的默认值 (解决缓存问题)
+    if (cloudConfig && cloudConfig.binId === '698c5767d0ea881f40b1d1b7') {
+        cloudConfig.binId = '698c5a34ae596e708f224101';
+        // 如果 API Key 也是默认的旧值（虽然不确定旧值是啥，但通常一起换），这里只换 Bin ID 即可，或者提示用户
+        localStorage.setItem('smartFlowCloudConfig', JSON.stringify(cloudConfig));
+    }
+
+    function openSyncSettings() {
+        if (cloudConfig) {
+            document.getElementById('cloudActionModal').classList.add('active');
+        } else {
+            document.getElementById('syncModal').classList.add('active');
+        }
+    }
+
+    window.closeCloudActionModal = function() {
+        document.getElementById('cloudActionModal').classList.remove('active');
+    }
+
+    window.switchToSettings = function() {
+        closeCloudActionModal();
+        if (cloudConfig) {
+            document.getElementById('syncBinId').value = cloudConfig.binId;
+            document.getElementById('syncApiKey').value = cloudConfig.apiKey;
+        }
+        document.getElementById('syncModal').classList.add('active');
+    }
+
+    window.handleCloudAction = async function(type) {
+        closeCloudActionModal();
+        
+        // Delay slightly to allow modal to close smoothly
+        setTimeout(async () => {
+            if (type === 'upload') {
+                const yes = await showConfirm('确定将本地数据上传至云端？\n(云端旧数据将被覆盖)');
+                if(yes) {
+                    await pushToCloud();
+                    showAlert('✅ 上传指令已发送');
+                }
+            } else {
+                 const yes = await showConfirm('确定从云端下载数据？\n(本地当前数据将被覆盖)');
+                 if(yes) {
+                    await pullFromCloud();
+                    showAlert('✅ 下载指令已发送');
+                 }
+            }
+        }, 100);
+    }
+
+    function closeSyncModal() {
+        document.getElementById('syncModal').classList.remove('active');
+    }
+
+    async function saveSyncConfig(e) {
+        e.preventDefault();
+        const binId = document.getElementById('syncBinId').value.trim();
+        const apiKey = document.getElementById('syncApiKey').value.trim();
+        
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ 连接中...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+                headers: { 'X-Master-Key': apiKey }
+            });
+
+            if (!response.ok) {
+                if (response.status === 404) throw new Error('❌ 找不到该 Bin ID');
+                if (response.status === 401) throw new Error('❌ Master Key 错误');
+                throw new Error('❌ 连接失败');
+            }
+
+            const data = await response.json();
+            
+            cloudConfig = { binId, apiKey };
+            localStorage.setItem('smartFlowCloudConfig', JSON.stringify(cloudConfig));
+            
+            const cloudData = data.record;
+            
+            if (Object.keys(cloudData).length === 0 || !cloudData.config) {
+                await pushToCloud();
+                document.getElementById('syncStatus').innerHTML = '<span style="color:var(--success-color)">✅ 连接成功！已初始化云端。</span>';
+            } else {
+                const useCloud = await showConfirm('检测到云端有数据，请选择同步方式：', '下载云端 (推荐)', '覆盖云端');
+                
+                if(useCloud) {
+                    appData = cloudData;
+                    localStorage.setItem('smartFlowData', JSON.stringify(appData));
+                    renderAll();
+                    document.getElementById('syncStatus').innerHTML = '<span style="color:var(--success-color)">✅ 已从云端下载最新数据。</span>';
+                } else {
+                    await pushToCloud();
+                    document.getElementById('syncStatus').innerHTML = '<span style="color:var(--success-color)">✅ 已将本地数据上传云端。</span>';
+                }
+            }
+            
+            setTimeout(() => {
+                closeSyncModal();
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                document.getElementById('syncStatus').innerHTML = '';
+            }, 1500);
+
+        } catch (err) {
+            showAlert(err.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    async function pushToCloud() {
+        if (!cloudConfig) return;
+        
+        // Header button status
+        const syncBtn = document.querySelector('header button');
+        if(syncBtn) syncBtn.innerHTML = '⏳';
+
+        try {
+            await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': cloudConfig.apiKey
+                },
+                body: JSON.stringify(appData)
+            });
+            if(syncBtn) syncBtn.innerHTML = '☁️';
+        } catch (e) {
+            console.error('Sync failed', e);
+            if(syncBtn) syncBtn.innerHTML = '⚠️';
+        }
+    }
+
+    async function pullFromCloud() {
+        if (!cloudConfig) return;
+        const syncBtn = document.querySelector('header button');
+        if(syncBtn) syncBtn.innerHTML = '⏳';
+
+        try {
+            const response = await fetch(`https://api.jsonbin.io/v3/b/${cloudConfig.binId}`, {
+                headers: { 'X-Master-Key': cloudConfig.apiKey }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.record && data.record.config) {
+                    appData = data.record;
+                    localStorage.setItem('smartFlowData', JSON.stringify(appData));
+                    renderAll();
+                }
+            }
+            if(syncBtn) syncBtn.innerHTML = '☁️';
+        } catch (e) {
+            console.error('Pull failed', e);
+            if(syncBtn) syncBtn.innerHTML = '⚠️';
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem('smartFlowData', JSON.stringify(appData));
+        renderAll();
+        pushToCloud();
+    }
+
+    // --- Helper ---
+    window.roundMinutes = function(input) {
+        if (!input.value) return;
+        const d = new Date(input.value);
+        const min = d.getMinutes();
+        const rounded = Math.ceil(min / 10) * 10;
+        
+        if (rounded !== min) {
+            d.setMinutes(rounded);
+            d.setSeconds(0);
+            d.setMilliseconds(0);
+            const tzOffset = d.getTimezoneOffset() * 60000;
+            input.value = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+        }
+    }
+
+    // --- 初始化 ---
+    function init() {
+        // Init Time Selects (Custom Modal Grid)
+        initDateTimePicker();
+
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const roundedMinutes = Math.ceil(minutes / 10) * 10;
+        now.setMinutes(roundedMinutes);
+        now.setSeconds(0);
+        now.setMilliseconds(0);
+        
+        setDateTimeInputs(now.toISOString(), 'taskDate', 'taskHour', 'taskMinute');
+        
+        if(cloudConfig) pullFromCloud();
+
+        renderAll();
+    }
+
+    function renderAll() {
+        renderSettings();
+        renderEntryOptions();
+        renderList();
+        renderCompleteList();
+        renderDashboard();
+    }
+
+    // --- 视图切换 ---
+    window.switchView = function(viewId) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        
+        document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+        document.querySelector(`nav button[onclick="switchView('${viewId}')"]`).classList.add('active');
+        
+        // 滚动回顶部
+        document.querySelector('main').scrollTop = 0;
+    }
+
+    // --- 设置 ---
+    function renderSettings() {
+        const renderTags = (listId, dataKey) => {
+            const container = document.getElementById(listId);
+            container.innerHTML = appData.config[dataKey].map((item, index) => `
+                <div class="tag">
+                    ${item}
+                    <span onclick="removeConfig('${dataKey}', ${index})" style="color:var(--danger-color);margin-left:8px;font-weight:bold;cursor:pointer">×</span>
+                </div>
+            `).join('');
+        };
+        renderTags('categoryList', 'categories');
+        renderTags('priorityList', 'priorities');
+    }
+
+    window.addConfig = function(key, inputId) {
+        const input = document.getElementById(inputId);
+        const val = input.value.trim();
+        if (val && !appData.config[key].includes(val)) {
+            appData.config[key].push(val);
+            input.value = '';
+            saveData();
+        }
+    }
+
+    window.removeConfig = async function(key, index) {
+        const yes = await showConfirm('确定删除该选项吗？', '删除', '保留');
+        if (yes) {
+            appData.config[key].splice(index, 1);
+            saveData();
+        }
+    }
+
+    // --- 录入 ---
+    function renderEntryOptions() {
+        const fillSelect = (id, items) => {
+            const select = document.getElementById(id);
+            const currentVal = select.value;
+            select.innerHTML = `<option value="">请选择</option>` + 
+                items.map(i => `<option value="${i}">${i}</option>`).join('');
+            if (items.includes(currentVal)) select.value = currentVal;
+        };
+        fillSelect('taskCategory', appData.config.categories);
+        fillSelect('taskPriority', appData.config.priorities);
+    }
+
+    window.addLink = function(inputId, displayId) {
+        const input = document.getElementById(inputId);
+        const url = input.value.trim();
+        if (url) {
+            const container = document.getElementById(displayId);
+            const div = document.createElement('div');
+            div.style.marginTop = '5px';
+            div.innerHTML = `<a href="${url}" target="_blank" style="color:var(--accent-cyan); word-break:break-all; margin-right:10px;">${url}</a><span style="cursor:pointer;color:var(--danger-color);white-space:nowrap;" onclick="this.parentElement.remove()">删除</span>`;
+            container.appendChild(div);
+            input.value = '';
+        }
+    }
+
+    window.submitTask = function(e) {
+        e.preventDefault();
+        
+        // 获取已添加的链接
+        let fileLinks = Array.from(document.getElementById('fileListDisplay').children).map(div => div.querySelector('a').href);
+        // 自动保存输入框中未点击+号的链接
+        const pendingInput = document.getElementById('taskFileLink');
+        const pendingLink = pendingInput.value.trim();
+        if (pendingLink) {
+            fileLinks.push(pendingLink);
+        }
+
+        const deadlineIso = getDateTimeFromInputs('taskDate', 'taskHour', 'taskMinute');
+        if (!deadlineIso) {
+            showAlert('请填写完整时间');
+            return;
+        }
+
+        const newTask = {
+            id: Date.now(),
+            desc: document.getElementById('taskDesc').value,
+            category: document.getElementById('taskCategory').value,
+            priority: document.getElementById('taskPriority').value,
+            deadline: deadlineIso,
+            related: document.getElementById('taskRelated').value,
+            requester: document.getElementById('taskRequester').value,
+            files: fileLinks,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+        };
+
+        appData.tasks.push(newTask);
+        saveData();
+        
+        e.target.reset();
+        document.getElementById('fileListDisplay').innerHTML = '';
+        
+        init(); // Reset time
+        
+        document.getElementById('successModal').classList.add('active');
+    }
+    
+    window.closeSuccessModal = function() {
+        document.getElementById('successModal').classList.remove('active');
+        switchView('list');
+    }
+
+    // --- 编辑 ---
+    window.openEditModal = function(taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const fillSelect = (id, items) => {
+            const select = document.getElementById(id);
+            select.innerHTML = items.map(i => `<option value="${i}">${i}</option>`).join('');
+        };
+        fillSelect('editTaskCategory', appData.config.categories);
+        fillSelect('editTaskPriority', appData.config.priorities);
+
+        document.getElementById('editTaskId').value = task.id;
+        document.getElementById('editTaskDesc').value = task.desc;
+        document.getElementById('editTaskCategory').value = task.category;
+        document.getElementById('editTaskPriority').value = task.priority;
+        document.getElementById('editTaskRelated').value = task.related || '';
+        document.getElementById('editTaskRequester').value = task.requester || '';
+        document.getElementById('editTaskFileLink').value = ''; // Clear pending link input
+        
+        // Time Fix
+        setDateTimeInputs(task.deadline, 'editTaskDate', 'editTaskHour', 'editTaskMinute');
+
+        const fileContainer = document.getElementById('editFileListDisplay');
+        fileContainer.innerHTML = '';
+        if (task.files && task.files.length > 0) {
+            task.files.forEach(url => {
+                const div = document.createElement('div');
+                div.style.marginTop = '5px';
+                div.innerHTML = `<a href="${url}" target="_blank" style="color:var(--accent-cyan); word-break:break-all; margin-right:10px;">${url}</a><span style="cursor:pointer;color:var(--danger-color);white-space:nowrap;" onclick="this.parentElement.remove()">删除</span>`;
+                fileContainer.appendChild(div);
+            });
+        }
+
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    window.closeEditModal = function() {
+        document.getElementById('editModal').classList.remove('active');
+    }
+
+    window.saveEditedTask = function(e) {
+        e.preventDefault();
+        const taskId = parseInt(document.getElementById('editTaskId').value);
+        const task = appData.tasks.find(t => t.id === taskId);
+        
+        if (task) {
+            const deadlineIso = getDateTimeFromInputs('editTaskDate', 'editTaskHour', 'editTaskMinute');
+            if (!deadlineIso) return;
+
+            task.desc = document.getElementById('editTaskDesc').value;
+            task.category = document.getElementById('editTaskCategory').value;
+            task.priority = document.getElementById('editTaskPriority').value;
+            task.deadline = deadlineIso;
+            task.related = document.getElementById('editTaskRelated').value;
+            task.requester = document.getElementById('editTaskRequester').value;
+            
+            // 处理链接：包含列表中的和输入框中未添加的
+            let fileLinks = Array.from(document.getElementById('editFileListDisplay').children).map(div => div.querySelector('a').href);
+            const pendingInput = document.getElementById('editTaskFileLink');
+            const pendingLink = pendingInput.value.trim();
+            if (pendingLink) {
+                fileLinks.push(pendingLink);
+            }
+            task.files = fileLinks;
+            
+            saveData();
+            closeEditModal();
+            document.getElementById('editSuccessModal').classList.add('active');
+        }
+    }
+
+    window.closeEditSuccessModal = function() {
+        document.getElementById('editSuccessModal').classList.remove('active');
+    }
+
+    // --- 清单 ---
+    const categoryColors = [
+        '#FF4081', '#00E676', '#2979FF', '#FFC107', '#E040FB', '#00F0FF'
+    ];
+
+    function getCategoryColor(category) {
+        const index = appData.config.categories.indexOf(category);
+        if (index === -1) return { bg: '#333', text: '#A0A0A0' };
+        const color = categoryColors[index % categoryColors.length];
+        return { bg: color, text: '#000000' };
+    }
+
+    function renderList() {
+        const container = document.getElementById('listContainer');
+        container.innerHTML = '';
+
+        // Filter Inputs
+        const fDate = document.getElementById('filterDeadline');
+        const fPri = document.getElementById('filterPriority');
+        const filterDate = fDate ? fDate.value : 'all';
+        const filterPri = fPri ? fPri.value : 'all';
+
+        const sections = {
+            '今日截止': [],
+            '三天内': [],
+            '本周': [],
+            '本月': [],
+            '长期': [],
+            '已完成': []
+        };
+
+        // Filter Logic
+        let filteredTasks = appData.tasks.filter(t => {
+            // Priority
+            if (filterPri !== 'all' && t.priority !== filterPri) return false;
+            
+            // Date
+            if (filterDate !== 'all') {
+                const d = new Date(t.deadline);
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const diffMs = d - todayStart;
+                const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+                if (filterDate === 'today') {
+                    // Assuming "Today" includes overdue for visibility, consistent with '今日截止' grouping
+                    return diffDays < 1; 
+                }
+                if (filterDate === 'three_days') return diffDays <= 3;
+                if (filterDate === 'this_week') {
+                    const day = todayStart.getDay() || 7;
+                    return diffDays <= (7 - day);
+                }
+                if (filterDate === 'this_month') {
+                    const endMonth = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
+                    return d <= endMonth;
+                }
+                if (filterDate === 'long_term') {
+                    // > 3 months
+                    const future = new Date(todayStart);
+                    future.setMonth(future.getMonth() + 3);
+                    return d > future;
+                }
+            }
+            return true;
+        });
+
+        const sortedTasks = filteredTasks.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+
+        sortedTasks.forEach(task => {
+            if (task.status === 'pending') {
+                const d = new Date(task.deadline);
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const diff = (d - todayStart) / (1000 * 60 * 60 * 24);
+                
+                let targetSec = '';
+                if (diff < 1) targetSec = '今日截止';
+                else if (diff <= 3) targetSec = '三天内';
+                else {
+                    const day = todayStart.getDay() || 7;
+                    const daysToSun = 7 - day;
+                    if (diff <= daysToSun) targetSec = '本周';
+                    else {
+                        const endMonth = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
+                        if (d <= endMonth) targetSec = '本月';
+                        else targetSec = '长期';
+                    }
+                }
+                sections[targetSec].push(task);
+            } else {
+                sections['已完成'].push(task);
+            }
+        });
+
+        const sectionOrder = ['今日截止', '三天内', '本周', '本月', '长期', '已完成'];
+        
+        let hasContent = false;
+        sectionOrder.forEach(secTitle => {
+            const tasks = sections[secTitle];
+            if (tasks.length === 0 && secTitle !== '已完成') return;
+            if (tasks.length > 0) hasContent = true;
+
+            const secDiv = document.createElement('div');
+            secDiv.innerHTML = `<div class="task-section-title">${secTitle} (${tasks.length})</div>`;
+            
+            tasks.forEach(t => {
+                const isDone = t.status !== 'pending';
+                const tagStyle = getCategoryColor(t.category);
+                
+                const item = document.createElement('div');
+                item.className = `task-item priority-${t.priority}`;
+                
+                const dateStr = new Date(t.deadline);
+                const dateDisplay = `${dateStr.getMonth()+1}/${dateStr.getDate()} ${String(dateStr.getHours()).padStart(2,'0')}:${String(dateStr.getMinutes()).padStart(2,'0')}`;
+
+                item.innerHTML = `
+                    <div class="task-info" style="flex:1; cursor:pointer;" onclick="openTaskDetailModal(${t.id})">
+                        <h4>${t.desc}</h4>
+                        <div class="task-meta">
+                            <span class="task-tag" style="background-color: ${tagStyle.bg}; color: ${tagStyle.text};">${t.category}</span>
+                            <span>📅 ${dateDisplay}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        ${!isDone ? `
+                            <button class="btn btn-small" style="background:#2C2C2E; color:#fff;" onclick="openEditModal(${t.id})">✏️</button>
+                            <button class="btn btn-small" onclick="openCompleteModal(${t.id})">👌</button>
+                        ` : `<span>${t.status==='completed'?'✅':'🗑️'}</span>`}
+                    </div>
+                `;
+                secDiv.appendChild(item);
+            });
+            container.appendChild(secDiv);
+        });
+        
+        if (!hasContent) {
+             container.innerHTML = '<div style="text-align:center;color:#666;padding:30px;">🔍 没有符合筛选条件的待办</div>';
+        }
+    }
+
+    // --- 关闭 ---
+    function renderCompleteList() {
+        const container = document.getElementById('pendingListContainer');
+        container.innerHTML = '';
+        
+        // Filter Inputs
+        const fDate = document.getElementById('filterDeadlineComplete');
+        const fPri = document.getElementById('filterPriorityComplete');
+        const filterDate = fDate ? fDate.value : 'all';
+        const filterPri = fPri ? fPri.value : 'all';
+
+        let pendingTasks = appData.tasks.filter(t => t.status === 'pending');
+
+        // Apply Filters
+        pendingTasks = pendingTasks.filter(t => {
+             // Priority
+            if (filterPri !== 'all' && t.priority !== filterPri) return false;
+            
+            // Date
+            if (filterDate !== 'all') {
+                const d = new Date(t.deadline);
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const diffMs = d - todayStart;
+                const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+                if (filterDate === 'today') return diffDays < 1; 
+                if (filterDate === 'three_days') return diffDays <= 3;
+                if (filterDate === 'this_week') {
+                    const day = todayStart.getDay() || 7;
+                    return diffDays <= (7 - day);
+                }
+                if (filterDate === 'this_month') {
+                    const endMonth = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
+                    return d <= endMonth;
+                }
+                if (filterDate === 'long_term') {
+                    const future = new Date(todayStart);
+                    future.setMonth(future.getMonth() + 3);
+                    return d > future;
+                }
+            }
+            return true;
+        });
+
+        pendingTasks.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+
+        if (pendingTasks.length === 0) {
+            container.innerHTML = '<div style="text-align:center;color:#666;padding:50px;">🔍 没有符合筛选条件的待办</div>';
+            return;
+        }
+
+        pendingTasks.forEach(t => {
+            const item = document.createElement('div');
+            item.className = `task-item priority-${t.priority}`;
+            item.onclick = () => openCompleteModal(t.id);
+            
+            const dateStr = new Date(t.deadline);
+            const dateDisplay = `${dateStr.getMonth()+1}月${dateStr.getDate()}日`;
+
+            item.innerHTML = `
+                <div class="task-info">
+                    <h4>${t.desc}</h4>
+                    <div class="task-meta">
+                        <span>${t.category}</span>
+                        <span style="color:var(--accent-cyan)">截止: ${dateDisplay}</span>
+                    </div>
+                </div>
+                <div style="font-size:1.2rem; color:var(--text-secondary)">></div>
+            `;
+            container.appendChild(item);
+        });
+    }
+
+    window.openCompleteModal = function(taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        document.getElementById('completeTaskId').value = taskId;
+        document.getElementById('modalTaskTitle').innerText = task.desc;
+        
+        const now = new Date();
+        setDateTimeInputs(now.toISOString(), 'completeDate', 'completeHour', 'completeMinute');
+        
+        document.getElementById('deliverableListDisplay').innerHTML = '';
+        document.getElementById('completeConclusion').value = '';
+        document.getElementById('completeModal').classList.add('active');
+    }
+
+    window.closeModal = function() {
+        document.getElementById('completeModal').classList.remove('active');
+    }
+
+    window.confirmComplete = function(e) {
+        e.preventDefault();
+        const taskId = parseInt(document.getElementById('completeTaskId').value);
+        const task = appData.tasks.find(t => t.id === taskId);
+        
+        if (task) {
+            const completedIso = getDateTimeFromInputs('completeDate', 'completeHour', 'completeMinute');
+
+            task.status = document.getElementById('completeStatus').value;
+            task.completionTime = completedIso;
+            task.deliverables = Array.from(document.getElementById('deliverableListDisplay').children).map(div => div.querySelector('a').href);
+            task.conclusion = document.getElementById('completeConclusion').value;
+            
+            saveData();
+            closeModal();
+            document.getElementById('completeSuccessModal').classList.add('active');
+        }
+    }
+
+    window.closeCompleteSuccessModal = function() {
+        document.getElementById('completeSuccessModal').classList.remove('active');
+        switchView('list');
+    }
+
+    // --- 详情 ---
+    window.openTaskDetailModal = function(taskId) {
+        const task = appData.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const container = document.getElementById('detailContainer');
+        const dateStr = new Date(task.deadline);
+        const dateDisplay = `${dateStr.getFullYear()}/${dateStr.getMonth()+1}/${dateStr.getDate()} ${String(dateStr.getHours()).padStart(2,'0')}:${String(dateStr.getMinutes()).padStart(2,'0')}`;
+        
+        let filesHtml = '';
+        if (task.files && task.files.length > 0) {
+            filesHtml = task.files.map(url => `<div><a href="${url}" target="_blank" style="color:var(--accent-cyan);word-break:break-all;">${url}</a></div>`).join('');
+        } else {
+            filesHtml = '<span style="color:var(--text-secondary)">无</span>';
+        }
+
+        const createTime = new Date(task.createdAt);
+        const createDisplay = `${createTime.getFullYear()}/${createTime.getMonth()+1}/${createTime.getDate()} ${String(createTime.getHours()).padStart(2,'0')}:${String(createTime.getMinutes()).padStart(2,'0')}`;
+
+        container.innerHTML = `
+            <div style="margin-bottom:20px;">
+                <label>待办内容</label>
+                <div style="font-size:1.1rem; font-weight:bold; line-height:1.4;">${task.desc}</div>
+            </div>
+            
+            <div class="form-grid">
+                <div>
+                    <label>分类</label>
+                    <div style="font-size:1rem;">${task.category}</div>
+                </div>
+                <div>
+                    <label>紧急度</label>
+                    <div style="font-size:1rem; color:var(--${task.priority === '高' ? 'danger' : (task.priority === '中' ? 'warning' : 'success')}-color)">${task.priority}</div>
+                </div>
+            </div>
+
+            <div class="form-grid" style="margin-top:20px;">
+                <div>
+                    <label>截止时间</label>
+                    <div style="font-size:1rem; font-family:monospace;">${dateDisplay}</div>
+                </div>
+                <div>
+                    <label>当前状态</label>
+                    <div style="font-size:1rem; color:${task.status==='pending'?'var(--warning-color)':'var(--success-color)'}">${task.status==='pending'?'🔥 进行中':'✅ 已完成'}</div>
+                </div>
+            </div>
+
+            <div class="form-grid" style="margin-top:20px;">
+                <div>
+                    <label>相关人</label>
+                    <div style="font-size:1rem;">${task.related || '<span style="color:var(--text-secondary)">无</span>'}</div>
+                </div>
+                <div>
+                    <label>需求方</label>
+                    <div style="font-size:1rem;">${task.requester || '<span style="color:var(--text-secondary)">无</span>'}</div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px;">
+                <label>相关链接</label>
+                <div class="link-list">${filesHtml}</div>
+            </div>
+
+            <div style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+                <label>创建时间</label>
+                <div style="font-size:0.85rem; color:var(--text-secondary); font-family:monospace;">${createDisplay}</div>
+            </div>
+        `;
+
+        document.getElementById('taskDetailModal').classList.add('active');
+    }
+
+    window.closeTaskDetailModal = function() {
+        document.getElementById('taskDetailModal').classList.remove('active');
+    }
+
+    // --- 看板 ---
+    function renderDashboard() {
+        const tasks = appData.tasks;
+        const pending = tasks.filter(t => t.status === 'pending');
+        
+        document.getElementById('statTotal').innerText = tasks.length;
+        document.getElementById('statCompleted').innerText = tasks.filter(t => t.status !== 'pending').length;
+        document.getElementById('statPending').innerText = pending.length;
+
+        const drawChart = (containerId, dataMap) => {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            container.style.display = 'flex';
+            container.style.alignItems = 'flex-end';
+            container.style.justifyContent = 'space-around';
+            
+            const max = Math.max(...Object.values(dataMap), 1);
+            
+            Object.keys(dataMap).forEach(key => {
+                const val = dataMap[key];
+                const height = (val / max) * 100;
+                
+                const group = document.createElement('div');
+                group.style.display = 'flex';
+                group.style.flexDirection = 'column';
+                group.style.alignItems = 'center';
+                group.style.flex = '1';
+                group.style.height = '100%';
+                group.style.justifyContent = 'flex-end';
+
+                group.innerHTML = `
+                    <div class="bar" style="height: ${Math.max(height, 1)}%; background-color: var(--accent-color); width: 20px; position:relative; border-radius:4px 4px 0 0;">
+                        <div class="bar-value" style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); color:#fff; font-size:0.7rem;">${val > 0 ? val : ''}</div>
+                    </div>
+                    <div class="bar-label" style="margin-top:5px; font-size:0.7rem; color:#aaa; text-align:center;">${key}</div>
+                `;
+                container.appendChild(group);
+            });
+        };
+
+        const deadlineMap = { '今日': 0, '三天内': 0, '本周': 0, '本月': 0, '长期': 0 };
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        pending.forEach(t => {
+            const d = new Date(t.deadline);
+            const diff = (d - todayStart) / (1000 * 60 * 60 * 24);
+            
+            if (diff < 1) deadlineMap['今日']++;
+            else if (diff <= 3) deadlineMap['三天内']++;
+            else {
+                const day = todayStart.getDay() || 7;
+                if (diff <= (7-day)) deadlineMap['本周']++;
+                else {
+                    const endMonth = new Date(todayStart.getFullYear(), todayStart.getMonth() + 1, 0);
+                    if (d <= endMonth) deadlineMap['本月']++;
+                    else deadlineMap['长期']++;
+                }
+            }
+        });
+        drawChart('chartDeadline', deadlineMap);
+
+        const catMap = {};
+        appData.config.categories.forEach(c => catMap[c] = 0);
+        pending.forEach(t => { if (catMap[t.category] !== undefined) catMap[t.category]++; });
+        drawChart('chartCategory', catMap);
+
+        const priMap = {};
+        appData.config.priorities.forEach(p => priMap[p] = 0);
+        pending.forEach(t => { if (priMap[t.priority] !== undefined) priMap[t.priority]++; });
+        drawChart('chartPriority', priMap);
+    }
+
+    init();
+</script>
+</body>
+</html>
